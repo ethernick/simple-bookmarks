@@ -3,7 +3,7 @@
  * Plugin Name: Simple Bookmark
  * Plugin URI: TBD
  * Description: My Simple bookmark plugin. Use the first link in a post as the title and link.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Nick Kempinski
  * Author URI: https://whoisnick.com/
  * License: MIT
@@ -25,9 +25,14 @@ add_filter( 'post_link', 'SimpleBookmark\\simplebookmark_post_link', 10, 3 );
 function simplebookmark_post_link( $permalink, $post, $leavename ) { 
     $id = $post->ID;
     $bookmark = get_post_meta($id,'bookmark',true);
+    if(preg_match("/application\/(ld\+)?json/i",$_SERVER["HTTP_ACCEPT"])) {
+        return $permalink;
+    }
+    
     if(!empty($bookmark)  && is_bookmark_category($id)) {
         return $bookmark;
     }
+
     return $permalink; 
 }; 
 
