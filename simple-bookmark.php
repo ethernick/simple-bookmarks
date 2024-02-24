@@ -13,26 +13,27 @@
 
 namespace SimpleBookmark;
 
-add_action('save_post', 'SimpleBookmark\\simplebookmark_save_data', 99, 3);
+add_action('save_post', 'SimpleBookmark\\simplebookmark_save_data', 8, 3);
 function simplebookmark_save_data( $post_id, $post, $update) {    
     $link = get_url_in_content($post->post_content);
-    if($link) {
+	$bookmark = get_post_meta($post_id,'bookmark',true);
+    if($link && $bookmark!==$link) {
         update_post_meta( $post_id, 'bookmark', sanitize_url( $link ) );
     }
 }
 
-add_filter( 'post_link', 'SimpleBookmark\\simplebookmark_post_link', 10, 3 );
+add_filter( 'post_link', 'SimpleBookmark\\simplebookmark_post_link', 8, 3 );
 function simplebookmark_post_link( $permalink, $post, $leavename ) { 
-    $id = $post->ID;
-    $bookmark = get_post_meta($id,'bookmark',true);
-    if(preg_match("/application\/(ld\+)?json/i",$_SERVER["HTTP_ACCEPT"])) {
-        return $permalink;
+	// unly use bookmark link when presented on the web.
+    if(preg_grep("/Content-Type:(.*)html/i",headers_list())) {
+		$id = $post->ID;
+		$bookmark = get_post_meta($id,'bookmark',true);
+
+		if(!empty($bookmark)  && is_bookmark_category($id)) {
+			return $bookmark;
+		}
     }
     
-    if(!empty($bookmark)  && is_bookmark_category($id)) {
-        return $bookmark;
-    }
-
     return $permalink; 
 }; 
 
