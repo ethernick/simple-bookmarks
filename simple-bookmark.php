@@ -3,7 +3,7 @@
  * Plugin Name: Simple Bookmark
  * Plugin URI: TBD
  * Description: My Simple bookmark plugin. Use the first link in a post as the title and link.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Nick Kempinski
  * Author URI: https://whoisnick.com/
  * License: MIT
@@ -47,20 +47,23 @@ function simplebookmark_post_title($title, $id) {
     return $title;
 }; 
 
-function is_bookmark_category($post_id) {    
-    $bookmark_categories = get_option( 'simplebookmark_category_ids' );
-    if($bookmark_categories =='0' || empty($bookmark_categories)) {
+function is_bookmark_category($post_id) { 
+	//convert v1.0.1 string value to array   
+    $bookmark_categories = is_string(get_option( 'simplebookmark_category_ids' ))?
+		array_map(function($item){
+			return (int)trim($item);
+		}, explode(',', get_option( 'simplebookmark_category_ids' )))
+		: get_option( 'simplebookmark_category_ids' );
+
+    if(!$bookmark_categories) {
         return true; 
     } else {
         $categories = array_map(function($item){
             return $item;
         },wp_get_post_categories($post_id, array( 'fields' => 'ids' )));
 
-        $bookmark_categories_array = array_map(function($item){
-            return (int)trim($item);
-        }, explode(',', $bookmark_categories));
 
-        return (sizeof(array_intersect($categories,$bookmark_categories_array)) > 0);
+        return (sizeof(array_intersect($categories,$bookmark_categories)) > 0);
     }
 }
 
@@ -111,7 +114,12 @@ function simplebookmark_category_ids_cb( $args ) {
 	<p><b>All Categories</b>: Unselect all checkboxes</p>
 	<br />
 	<?php
-	$option = get_option( 'simplebookmark_category_ids' );
+
+	//convert v1.0.1 string value to array
+	$option = is_string(get_option( 'simplebookmark_category_ids' ))?
+		array_map('trim',explode(",",$obj))
+		: get_option( 'simplebookmark_category_ids' );
+
 	$categories = get_categories();
 	foreach($categories as $category) {
 		$checked_html = "";
