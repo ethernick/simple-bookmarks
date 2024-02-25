@@ -3,7 +3,7 @@
  * Plugin Name: Simple Bookmark
  * Plugin URI: TBD
  * Description: My Simple bookmark plugin. Use the first link in a post as the title and link.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Nick Kempinski
  * Author URI: https://whoisnick.com/
  * License: MIT
@@ -47,20 +47,23 @@ function simplebookmark_post_title($title, $id) {
     return $title;
 }; 
 
-function is_bookmark_category($post_id) {    
-    $bookmark_categories = get_option( 'simplebookmark_category_ids' );
-    if($bookmark_categories =='0' || empty($bookmark_categories)) {
+function is_bookmark_category($post_id) { 
+	//convert v1.0.1 string value to array   
+    $bookmark_categories = is_string(get_option( 'simplebookmark_category_ids' ))?
+		array_map(function($item){
+			return (int)trim($item);
+		}, explode(',', get_option( 'simplebookmark_category_ids' )))
+		: get_option( 'simplebookmark_category_ids' );
+
+    if(!$bookmark_categories) {
         return true; 
     } else {
         $categories = array_map(function($item){
             return $item;
         },wp_get_post_categories($post_id, array( 'fields' => 'ids' )));
 
-        $bookmark_categories_array = array_map(function($item){
-            return (int)trim($item);
-        }, explode(',', $bookmark_categories));
 
-        return (sizeof(array_intersect($categories,$bookmark_categories_array)) > 0);
+        return (sizeof(array_intersect($categories,$bookmark_categories)) > 0);
     }
 }
 
@@ -68,30 +71,15 @@ function is_bookmark_category($post_id) {
 add_action( 'admin_init', 'SimpleBookmark\\simplebookmark_register_settings' );
 function simplebookmark_register_settings() {
     
-    
-
     add_settings_section(
 		'simplebookmark_section_settings',
-		__( 'Simple Bookmark Settings', 'simplebookmark' ), 'SimpleBookmark\\simplebookmark_section_settings_cb',
+		__( 'Settings', 'simplebookmark' ), 'SimpleBookmark\\simplebookmark_section_settings_cb',
 		'simplebookmark'
-	);
-
-    register_setting( 'simplebookmark', 'simplebookmark_category_ids' );
-    add_settings_field(
-		'simplebookmark_category_ids', __( 'Category IDs', 'simplebookmark' ),
-		'SimpleBookmark\\simplebookmark_category_ids_cb',
-		'simplebookmark',
-		'simplebookmark_section_settings',
-		array(
-			'label_for'         => 'simplebookmark_category_ids',
-			'class'             => 'simplebookmark_row',
-			'simplebookmark_custom_data' => 'custom',
-		)
 	);
 
     register_setting( 'simplebookmark', 'simplebookmark_title_icon' );
     add_settings_field(
-		'simplebookmark_title_icon', __( 'Icon', 'simplebookmark' ),
+		'simplebookmark_title_icon', __( 'Bookmark Indicator', 'simplebookmark' ),
 		'SimpleBookmark\\simplebookmark_title_icon_cb',
 		'simplebookmark',
 		'simplebookmark_section_settings',
@@ -101,24 +89,53 @@ function simplebookmark_register_settings() {
 			'simplebookmark_custom_data' => 'custom',
 		)
 	);
+
+	register_setting( 'simplebookmark', 'simplebookmark_category_ids' );
+    add_settings_field(
+		'simplebookmark_category_ids', __( 'Categories', 'simplebookmark' ),
+		'SimpleBookmark\\simplebookmark_category_ids_cb',
+		'simplebookmark',
+		'simplebookmark_section_settings',
+		array(
+			'label_for'         => 'simplebookmark_category_ids',
+			'class'             => 'simplebookmark_row',
+			'simplebookmark_custom_data' => 'custom',
+		)
+	);
 }
 function simplebookmark_section_settings_cb( $args ) {
 	?>
-	<p id="<?php echo esc_attr( $args['id'] ); ?>"><?php esc_html_e( 'Follow the white rabbit.', 'wporg' ); ?></p>
+	<p id="<?php echo esc_attr( $args['id'] ); ?>"></p>
 	<?php
 }
 
 function simplebookmark_category_ids_cb( $args ) {
-	$option = get_option( 'simplebookmark_category_ids' );
-    ?>
-    <input type="text" id="simplebookmark_category_ids" name="simplebookmark_category_ids" value="<?php echo $option; ?>" />
-    <?php
+	?>
+	<p><b>All Categories</b>: Unselect all checkboxes</p>
+	<br />
+	<?php
+
+	//convert v1.0.1 string value to array
+	$option = is_string(get_option( 'simplebookmark_category_ids' ))?
+		array_map('trim',explode(",",$obj))
+		: get_option( 'simplebookmark_category_ids' );
+
+	$categories = get_categories();
+	foreach($categories as $category) {
+		$checked_html = "";
+	
+		if(in_array($category->cat_ID,$option)) {
+			$checked_html = 'checked="checked"';
+		} ?>
+		<label><input type="checkbox" name="simplebookmark_category_ids[]" value="<?php echo $category->cat_ID; ?>" <?php echo $checked_html;?>><?php echo $category->cat_name; ?></label><br />
+	<?php }
 }
 
 function simplebookmark_title_icon_cb( $args ) {
 	$option = get_option( 'simplebookmark_title_icon' );
     ?>
-    <input type="text" id="simplebookmark_title_icon" name="simplebookmark_title_icon" value="<?php echo $option; ?>" />
+    <input type="text" id="simplebookmark_title_icon" name="simplebookmark_title_icon" value="<?php echo $option; ?>" /><br />
+	<small><i>Sample:</i></small> <b>Title<sup><?php echo $option; ?></sup>
     <?php
 }
 
@@ -132,7 +149,7 @@ function simplebookmark_add_plugin_page_settings_link( $links ) {
 
 add_action('admin_menu', 'SimpleBookmark\\simplebookmark_register_options_page');
 function simplebookmark_register_options_page() {
-    add_options_page('', '', 'manage_options', 'simplebookmark', 'SimpleBookmark\\simplebookmark_options_page');
+    add_options_page('Simple Bookmark', 'Simple Bookmark', 'manage_options', 'simplebookmark', 'SimpleBookmark\\simplebookmark_options_page');
 }
 
 function simplebookmark_options_page()
